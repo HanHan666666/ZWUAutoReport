@@ -28,18 +28,39 @@ except FileNotFoundError:
 
 
 # 配置输出log信息
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)   # 设置打印级别
+# 创建一个logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# 创建一个handler，用于写入日志文件
+fh_debug = logging.FileHandler('debug.log')
+fh_debug.setLevel(logging.DEBUG)
+
+fh_info = logging.FileHandler('info.log')
+fh_info.setLevel(logging.INFO)
+
+fh_warning = logging.FileHandler('warning.log')
+fh_warning.setLevel(logging.WARNING)
+
+fh_error = logging.FileHandler('error.log')
+fh_error.setLevel(logging.ERROR)
+
+# 定义handler的输出格式
 formatter = logging.Formatter(
     '%(asctime)s %(filename)s %(funcName)s [line:%(lineno)d] %(levelname)s %(message)s')
-# 设置屏幕打印的格式
-sh = logging.StreamHandler()
-sh.setFormatter(formatter)
-logger.addHandler(sh)
-# 设置log保存
-fh = logging.FileHandler("info.log", encoding='utf8')
-fh.setFormatter(formatter)
-logger.addHandler(fh)
+
+# 给handler添加formatter
+fh_debug.setFormatter(formatter)
+fh_info.setFormatter(formatter)
+fh_warning.setFormatter(formatter)
+fh_error.setFormatter(formatter)
+
+# 给logger添加handler
+logger.addHandler(fh_debug)
+logger.addHandler(fh_info)
+logger.addHandler(fh_warning)
+logger.addHandler(fh_error)
+
 
 
 # 发送邮件
@@ -115,7 +136,7 @@ def report(Account, Password, Email):
         'https://ehallapp.zwu.edu.cn:8080/_layouts/15/ZWUWSBS/AppApi/System/AuthApi.aspx', headers=headers, json=json_data)
 
     # print(response.cookies)
-    logging.info(response.cookies)
+    logger.debug(response.cookies)
     # print(response.text)
     # 检查response.text中是否包含'用户名或密码不正确'
     if '用户名或密码不正确' in response.text:
@@ -166,15 +187,15 @@ def report(Account, Password, Email):
 
     ToDoFill = json.loads(getToDoFill_response.text)
     if len(ToDoFill['Data']) == 0:
-        logging.info(Account + ' 今日已填报')
+        logger.info(Account + ' 今日已填报')
         return
     else:
-        logging.info(Account + ' 今日未填报，开始填报')
+        logger.info(Account + ' 今日未填报，开始填报')
 
     # 提取json代码getToDoFill_ssresponse中的Id
     Id = getToDoFill_response.text[getToDoFill_response.text.find(
         '"Id":"')+6:getToDoFill_response.text.find('","SortAscending":false}')]
-    logging.info(Id)
+    logger.debug(Id)
 
     # 暂停1s防止请求过快
     time.sleep(1)
@@ -203,10 +224,10 @@ def report(Account, Password, Email):
     time.sleep(1)
 
     reportForm = json.loads(getUserViewData_response.text)
-    logging.info(getUserViewData_response.text)
+    logger.debug(getUserViewData_response.text)
 
     if len(reportForm['Data']['InformationReportConentList']) != 5:
-        logging.info('表单发生变化，请更新脚本。')
+        logger.info('表单发生变化，请更新脚本。')
         sendEmail('表单发生变化，打卡失败，请手动打卡。', Email, '今日自动打卡失败，请注意！！！！！')
         return
 
@@ -230,7 +251,7 @@ def report(Account, Password, Email):
     post_response = requests.post('https://ehallapp.zwu.edu.cn:8080/_layouts/15/ZWUWSBS/AppApi/HealthReport/InformationReportApi.aspx',
                                   cookies=account_cookies, headers=post_headers, json=reportData)
 
-    logging.info(post_response.text)
+    logger.debug(post_response.text)
 
     # 检查填报是否成功
     getToDoFill_response = requests.post('https://ehallapp.zwu.edu.cn:8080/_layouts/15/ZWUWSBS/AppApi/HealthReport/InformationQueryReportApi.aspx',
@@ -240,17 +261,19 @@ def report(Account, Password, Email):
     # 返回的json中的Data为空则填报成功
     global flag
     if len(ToDoFill['Data']) == 0:
-        logging.info(Account + ' 填报成功')
+        logger.info(Account + ' 填报成功')
         flag = flag + 1
         return
     else:
-        logging.info(Account + ' 填报出现错误↓')
-        logging.info("getToDoFill_response: " + getToDoFill_response.text)
+        logger.info(Account + ' 填报出现错误↓')
+        logger.info("getToDoFill_response: " + getToDoFill_response.text)
+        logger.debug(Account + ' 填报出现错误↓')
+        logger.debug("getToDoFill_response: " + getToDoFill_response.text)
         sendEmail('今日打卡失败\n请手动进行打卡', Email, '今日自动打卡失败，请注意！！！！！')
 
 
 if __name__ == '__main__':
-    logging.info("开始运行")
+    logger.info("开始运行")
 
     randomArr = []
     random.seed(time.time())
@@ -267,13 +290,13 @@ if __name__ == '__main__':
     for i in randomList:
         # 生成1-1200的随机数(20分钟以内随机)，单位秒，可自行修改
         randomNum = random.randint(1, 1200)
-        logging.info(str(randomNum) + "秒后执行：" + Account[i]['Account'])
+        logger.info(str(randomNum) + "秒后执行：" + Account[i]['Account'])
         time.sleep(randomNum)
-        logging.info('正在填报第' + str(i+1) + '个账号')
+        logger.info('正在填报第' + str(i+1) + '个账号')
         report(Account[i]['Account'], Account[i]['Password'],
                Account[i]['Email'])
-        logging.info('第' + str(i+1) + '个账号填报完成')
-        logging.info('')
+        logger.info('第' + str(i+1) + '个账号填报完成')
+        logger.info('')
     # 管理员打卡情况通知
     if flag == len(Account):
         sendEmail('今日打卡完成', AdminEmail, '今日自动打卡成功' + str(flag) + '个账号，共有' + str(len(Account)
@@ -281,4 +304,4 @@ if __name__ == '__main__':
     else:
         sendEmail('今天打卡出现错误', AdminEmail, '今日自动打卡成功' + str(flag) + '个账号，共有' + str(len(Account)
                                                                                   ) + '个账号')
-    logging.info('完毕')
+    logger.info('完毕')
