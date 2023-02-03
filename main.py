@@ -7,10 +7,6 @@ import sys
 import os
 import yagmail
 import logging
-import uuid
-import base64
-import re
-import datetime
 
 # 记录成功打卡人数的标记
 flag = 0
@@ -31,19 +27,6 @@ except FileNotFoundError:
     AdminEmail = (json.loads(conf))['AdminEmail']
 
 
-# # 位置信息
-# # 在浙江万里学院宿舍楼26号楼，39号楼，28号楼，43号楼，文韵楼，22号楼，41号楼，方圆100米内生成随机位置
-# randomLocation = ['浙江万里学院宿舍楼-26号楼北102米', '浙江万里学院宿舍楼-39号楼北101米', '浙江万里学院宿舍楼-28号楼北310米', '浙江万里学院宿舍楼-43号楼北120米', '浙江万里学院宿舍楼-文韵楼北310米', '浙江万里学院宿舍楼-22号楼北120米', '浙江万里学院宿舍楼-41号楼北130米', '浙江万里学院宿舍楼-26号楼北102米', '浙江万里学院宿舍楼-39号楼北101米', '浙江万里学院宿舍楼-28号楼北210米', '浙江万里学院宿舍楼-43号楼北320米', '浙江万里学院宿舍楼-文韵楼北30米', '浙江万里学院宿舍楼-22号楼北20米', '浙江万里学院宿舍楼-41号楼北230米',
-#                   '浙江万里学院宿舍楼-26号楼北12米', '浙江万里学院宿舍楼-39号楼北10米', '浙江万里学院宿舍楼-28号楼北10米', '浙江万里学院宿舍楼-43号楼北11米', '浙江万里学院宿舍楼-文韵楼北16米', '浙江万里学院宿舍楼-22号楼北50米', '浙江万里学院宿舍楼-41号楼北21米', '浙江万里学院宿舍楼-26号楼北153米', '浙江万里学院宿舍楼-39号楼北105米', '浙江万里学院宿舍楼-28号楼北26米', '浙江万里学院宿舍楼-43号楼北150米', '浙江万里学院宿舍楼-文韵楼北313米', '浙江万里学院宿舍楼-22号楼北220米', '浙江万里学院宿舍楼-41号楼北130米']
-# CurrentLocation = '浙江省宁波市鄞州区首南街道 浙江万里学院(钱湖校区)内, '
-# # 程序会在经纬度两个值之后插入一个五位的随机数，来保证每次提交的经纬度都不是一样的
-# LatitudeLongitude = '29.822667977,121.566843999'
-# Province = '浙江省'
-# City = '宁波市'
-# District = '鄞州区'
-# Address = '浙江省宁波市鄞州区钱湖街道万里学院(钱湖校区)'
-# Street = '首南街道'
-
 # 配置输出log信息
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)   # 设置打印级别
@@ -58,8 +41,7 @@ fh = logging.FileHandler("info.log", encoding='utf8')
 fh.setFormatter(formatter)
 logger.addHandler(fh)
 
-base64Code = "Y21DYnNuVzdIMmpqenZuSzBIOEJZRUlSQWJGRzJ0Tk4="
-tips = "ak"
+
 # 发送邮件
 
 """ 
@@ -97,196 +79,6 @@ def sendEmail(content, receivers, subject):
     yag.close()
 
 
-class YesterdayInfo:
-
-    def __init__(self, G2UserToken, ZWU_KeepAutheticated):
-        self.G2UserToken = G2UserToken
-        self.ZWU_KeepAutheticated = ZWU_KeepAutheticated
-
-        logging.info('获取昨日图片')
-        # 获取打卡记录列表
-        self.getYesterdayImage_cookies = {
-            'G2UserToken': G2UserToken,
-            'ZWU_KeepAutheticated': ZWU_KeepAutheticated,
-            'loginstatus': '1',
-        }
-        self.getYesterdayImage_headers = {
-            'host': 'ehallapp.zwu.edu.cn:8080',
-            'accept': 'application/json, text/plain, */*',
-            'x-requested-with': 'XMLHttpRequest',
-            'accept-language': 'zh-cn',
-            'origin': 'https://ehallapp.zwu.edu.cn:8080',
-            'referer': 'https://ehallapp.zwu.edu.cn:8080/app/healthReport/dataFillingList',
-            'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
-            'Connection': 'close',
-        }
-
-        self.getYesterdayImage_json_data = {
-            'PostBackType': 'getDoneFillUserList',
-            'InfoId': '',
-            'ActionCode': 'InfoReport_list',
-            'PunchStatus': '1',
-            'loadingMessage': '加载中...',
-            'IsAppRequest': True,
-        }
-
-        getYesterdayImage_response = requests.post('https://ehallapp.zwu.edu.cn:8080/_layouts/15/ZWUWSBS/AppApi/HealthReport/InformationQueryReportApi.aspx',
-                                                   cookies=self.getYesterdayImage_cookies, headers=self.getYesterdayImage_headers, json=self.getYesterdayImage_json_data)
-
-        # print(response.text)
-        dailyLIst = json.loads(getYesterdayImage_response.text)
-        # 获取昨日日期，格式为 月-日
-        yesterdayDate = (datetime.datetime.now() +
-                         datetime.timedelta(days=-1)).strftime("%m-%d")
-        logging.info(yesterdayDate)
-
-        # 找到昨日打卡记录
-        # 可能存在的bug：如果昨天没打卡，获取图片将会失败，不会自动前推一天
-        for i in dailyLIst['Data']:
-            if yesterdayDate in i['Created']:
-                self.RegistrationId = i['Id']
-                self.InfoId = i['InfoId']
-
-        logging.info(self.RegistrationId)
-        logging.info(self.InfoId)
-
-        # 获取昨天的表单
-        yesterday_headers = {
-            'host': 'ehallapp.zwu.edu.cn:8080',
-            'accept': 'application/json, text/plain, */*',
-            'x-requested-with': 'XMLHttpRequest',
-            'accept-language': 'zh-cn',
-            'origin': 'https://ehallapp.zwu.edu.cn:8080',
-            'referer': 'https://ehallapp.zwu.edu.cn:8080/app/healthReport/dataFillingEditor?id='+self.InfoId+'&registrationId='+self.RegistrationId,
-            'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
-            'Connection': 'close',
-        }
-
-        yesterday_json_data = {
-            'PostBackType': 'getUserViewData',
-            'RegistrationId': self.RegistrationId,
-            'Id': self.InfoId,
-            'IsAppRequest': True,
-        }
-
-        yesterday_response = requests.post('https://ehallapp.zwu.edu.cn:8080/_layouts/15/ZWUWSBS/AppApi/HealthReport/InformationReportApi.aspx',
-                                           cookies=self.getYesterdayImage_cookies, headers=yesterday_headers, json=yesterday_json_data)
-
-        # 处理昨天的表单，提取图片
-        # print(response.text)
-        self.yesterday_data = json.loads(yesterday_response.text)
-
-    def Image(self, FormItem):
-
-        yesterday_url = self.yesterday_data['Data']['InformationReportConentList'][
-            FormItem]['AttachmentDataList'][0]['Url']
-
-        # 提取cid和uid
-        cid = re.findall(r'cid=(.*?)&', yesterday_url)[0]
-        uid = re.findall(r'uid=(.*?)$', yesterday_url)[0]
-        logging.info(cid)
-        logging.info(uid)
-
-        # 获取图片
-
-        image_headers = {
-            'host': 'ehallapp.zwu.edu.cn:8080',
-            # Requests sorts cookies= alphabetically
-            'accept': 'image/png,image/svg+xml,image/*;q=0.8,video/*;q=0.8,*/*;q=0.5',
-            'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
-            'accept-language': 'zh-cn',
-            'referer': 'https://ehallapp.zwu.edu.cn:8080/app/healthReport/dataFillingEditor?id='+self.InfoId+'&registrationId='+self.RegistrationId,
-            'Connection': 'close',
-        }
-
-        params = {
-            'cid': cid,
-            'uid': uid,
-        }
-
-        image_response = requests.get('https://ehallapp.zwu.edu.cn:8080/_layouts/15/ZWUWSBS/AppApi/HealthReport/InformationReportApi.aspx',
-                                      params=params, cookies=self.getYesterdayImage_cookies, headers=image_headers)
-
-        # 把image_response中的图片转换成base64文本编码，并返回
-        image_base64 = base64.b64encode(image_response.content)
-        return image_base64.decode()
-
-    @property
-    def LatitudeLongitude(self):
-        MessyLocate = self.yesterday_data['Data']['InformationReportConentList'][1]['LatitudeLongitude']
-        # 减少经纬度小数位数，保留前三位
-        b = MessyLocate.split(',')
-        c = b[0].split('.')
-        d = b[1].split('.')
-        e = c[0] + '.' + c[1][0:3] + ',' + d[0] + '.' + d[1][0:3]
-        return e
-
-
-# 混淆位置类
-class Location:
-    def __init__(self, latitudeLongitude: str):
-        # 在经纬度两个值之后插入一个五位的随机数，来保证每次提交的经纬度都不是一样的
-        # 生成随机数使得每次的LatitudeLongitude都不相同
-        random_num1 = random.randint(10000, 99999)
-        random_num2 = random.randint(10000, 99999)
-        self.__latitudeLongitude = latitudeLongitude[:latitudeLongitude.find(
-            ',')] + str(random_num1) + latitudeLongitude[latitudeLongitude.find(','):] + str(random_num2)
-        url = 'https://api.map.baidu.com/reverse_geocoding/v3/'
-        params = {
-            # 上传描述性信息
-            # tips:  base64.b64decode(base64Code).decode('utf-8'),
-            'ak': 'HmWt3r5SNn6bi6MBI4g5B03ad0pmRahX',
-            'output': 'json',
-            'coordtype': 'bd09ll',
-            'location': self.__latitudeLongitude,
-            'extensions_poi': '1',
-            'extensions_town': 'true',
-            'radius': '200',
-        }
-        response = requests.get(url, params=params)
-        # print(response.text)
-        self.__data = json.loads(response.text)
-        # 判断ak是否失效
-        if self.__data['status'] != 0:
-            logging.error('ak失效')
-            raise Exception('ak失效')
-    # 把函数伪装成属性
-
-    @property
-    def latitudeLongitude(self):
-        return self.__latitudeLongitude
-
-    @property
-    def province(self):
-        return self.__data['result']['addressComponent']['province']
-
-    @property
-    def city(self):
-        return self.__data['result']['addressComponent']['city']
-
-    @property
-    def district(self):
-        # Area
-        return self.__data['result']['addressComponent']['district']
-
-    @property
-    def street(self):
-        return self.__data['result']['addressComponent']['street']
-
-    @property
-    def address(self):
-        return self.__data['result']['pois'][0]['addr']
-
-    @property
-    def CurrentLocation(self):
-        return self.__data['result']['formatted_address'] + self.__data['result']['pois'][2]['name']
-    # 为什么选项是2呢？因为第一个是当前位置，第二个是学校，第三个是学校附近的地方 --copilot说的
-
-    @property
-    def DetailLocation(self):
-        # 仿照：“浙江万里学院(钱湖校区)内,文渊楼西南85米”拼接数据
-        return self.__data['result']['formatted_address'] + self.__data['result']['pois'][2]['addr']+',' + self.__data['result']['pois'][2]['name']+self.__data['result']['pois'][2]['direction']+self.__data['result']['pois'][2]['distance']+'米'
-
 
 # 打卡函数
 """ 
@@ -301,8 +93,6 @@ def report(Account, Password, Email):
     headers = {
         'host': 'ehallapp.zwu.edu.cn:8080',
         'accept': 'application/json, text/plain, */*',
-        # Already added when you pass json=
-        # 'content-type': 'application/json',
         'origin': 'https://ehallapp.zwu.edu.cn:8080',
         'referer': 'https://ehallapp.zwu.edu.cn:8080/app/login',
         'x-requested-with': 'XMLHttpRequest',
@@ -355,15 +145,12 @@ def report(Account, Password, Email):
 
     getToDoFill_headers = {
         'host': 'ehallapp.zwu.edu.cn:8080',
-        # Already added when you pass json=
-        # 'content-type': 'application/json',
         'accept': 'application/json, text/plain, */*',
         'x-requested-with': 'XMLHttpRequest',
         'accept-language': 'zh-cn',
         'origin': 'https://ehallapp.zwu.edu.cn:8080',
         'referer': 'https://ehallapp.zwu.edu.cn:8080/app/healthReport/dataFillingList',
         'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
-        # Requests sorts cookies= alphabetically
         'Connection': 'close',
     }
 
@@ -415,75 +202,10 @@ def report(Account, Password, Email):
     # 暂停1s防止请求过快
     time.sleep(1)
 
-    # 将位置信息添加到表单中
     reportForm = json.loads(getUserViewData_response.text)
     logging.info(getUserViewData_response.text)
 
-    # 获取昨日打卡信息
-    yesterday_info = YesterdayInfo(
-        G2UserToken, ZWU_KeepAutheticated)
-    # 获取一个随机位置
-    RandomAddress = Location(yesterday_info.LatitudeLongitude)
-
-    reportForm['Data']['InformationReportConentList'][1]['QuestionAnswer'] = RandomAddress.DetailLocation
-    reportForm['Data']['InformationReportConentList'][1]['LatitudeLongitude'] = RandomAddress.latitudeLongitude
-    reportForm['Data']['InformationReportConentList'][1]['Province'] = RandomAddress.province
-    reportForm['Data']['InformationReportConentList'][1]['City'] = RandomAddress.city
-    reportForm['Data']['InformationReportConentList'][1]['Area'] = RandomAddress.district
-    reportForm['Data']['InformationReportConentList'][1]['Street'] = RandomAddress.street
-    reportForm['Data']['InformationReportConentList'][1][
-        'StrDetailAddresseet'] = RandomAddress.CurrentLocation
-    # 你申请的支付宝健康码是
-    reportForm['Data']['InformationReportConentList'][3]['QuestionAnswer'] = 'A'
-
-    # 获取今天的日期的天数
-    today = datetime.date.today().day
-    # 如果today是10的倍数，24小时内是否做过核酸=A
-    if today % 10 == 0:
-        reportForm['Data']['InformationReportConentList'][8]['QuestionAnswer'] = 'A'
-    else:
-        reportForm['Data']['InformationReportConentList'][8]['QuestionAnswer'] = 'B'
-
-    # 将获取截图信息改写为循环
-    screenshotNum = 0
-    for items in [4]:
-        screenshotNum = screenshotNum+1
-        picIsExist = False
-        try:
-            # 件康马在数组4的位置
-            pic_64 = yesterday_info.Image(FormItem=items)
-            logging.info('获取昨日件康马成功')
-            picIsExist = True
-        except Exception as es:
-            logging.error('获取昨日件康马失败')
-            logging.error(es)
-            try:
-                pic = open(sys.path[0]+'/screenshot' +
-                           screenshotNum+'/'+Account + '.jpeg', 'rb')
-                pic_read = pic.read()
-                pic_64 = base64.b64encode(pic_read)
-                pic_64 = pic_64.decode()
-                # 星橙卡备用
-                logging.info("图片读取成功")
-                picIsExist = True
-            except Exception as e:
-                logging.info("图片读取失败, 不上传件康马图片")
-                picIsExist = False
-                logging.error(e)
-        # 如果图片存在并读取成功，将图片添加到表单中
-        if picIsExist:
-            # 件康马
-            AttachmentDataList = []
-            picInfo = {
-                'Data': 'data:image/jpeg;base64,' + pic_64,
-                'FileName': (str(uuid.uuid4())).upper()+'.jpeg',
-                'ModiState': 'C',
-                'UniqueId': str((uuid.uuid4()).hex)
-            }
-            AttachmentDataList.append(picInfo)
-            reportForm['Data']['InformationReportConentList'][items]['AttachmentDataList'] = AttachmentDataList
-
-    if len(reportForm['Data']['InformationReportConentList']) != 9:
+    if len(reportForm['Data']['InformationReportConentList']) != 5:
         logging.info('表单发生变化，请更新脚本。')
         sendEmail('表单发生变化，打卡失败，请手动打卡。', Email, '今日自动打卡失败，请注意！！！！！')
         return
@@ -496,8 +218,6 @@ def report(Account, Password, Email):
 
     post_headers = {
         'host': 'ehallapp.zwu.edu.cn:8080',
-        # Already added when you pass json=
-        # 'content-type': 'application/json',
         'accept': 'application/json, text/plain, */*',
         'x-requested-with': 'XMLHttpRequest',
         'accept-language': 'zh-cn',
