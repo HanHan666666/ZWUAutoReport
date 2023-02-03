@@ -12,7 +12,7 @@
 
 如果不需要发送邮件，将Email设置为notSend
 
-`AdminEmail`用于设置你的邮箱，程序执行结束后会将log以邮件的的形式发送到你的邮箱
+`AdminEmail`用于设置你的邮箱，程序执行结束后会将info.log以邮件的的形式发送到你的邮箱
 
 ### `config.json`
 
