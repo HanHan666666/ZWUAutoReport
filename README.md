@@ -14,6 +14,10 @@
 
 `AdminEmail`用于设置你的邮箱，程序执行结束后会将info.log以邮件的的形式发送到你的邮箱
 
+**记得修改随机间隔，如果有多个账号,在代码286行**
+
+`randomNum = random.randint(1, 10)`
+
 ### `config.json`
 
 ```json

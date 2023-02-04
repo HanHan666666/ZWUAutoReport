@@ -282,7 +282,7 @@ if __name__ == '__main__':
         del randomArr[randomID]
 
     for i in randomList:
-        # 生成1-1200的随机数(20分钟以内随机)，单位秒，可自行修改
+        # 生成1-10的随机数(20分钟以内随机)，单位秒，可自行修改
         randomNum = random.randint(1, 10)
         logger.info(str(randomNum) + "秒后执行：" + Account[i]['Account'])
         time.sleep(randomNum)
