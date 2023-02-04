@@ -33,33 +33,27 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # 创建一个handler，用于写入日志文件
-fh_debug = logging.FileHandler('debug.log')
+fh_debug = logging.FileHandler(sys.path[0]+'/debug.log', encoding='utf8')
 fh_debug.setLevel(logging.DEBUG)
 
-fh_info = logging.FileHandler('info.log')
+fh_info = logging.FileHandler(sys.path[0]+'/info.log', encoding='utf8')
 fh_info.setLevel(logging.INFO)
 
-fh_warning = logging.FileHandler('warning.log')
-fh_warning.setLevel(logging.WARNING)
-
-fh_error = logging.FileHandler('error.log')
-fh_error.setLevel(logging.ERROR)
 
 # 定义handler的输出格式
 formatter = logging.Formatter(
     '%(asctime)s %(filename)s %(funcName)s [line:%(lineno)d] %(levelname)s %(message)s')
-
+# 设置屏幕打印的格式
+sh = logging.StreamHandler()
+sh.setFormatter(formatter)
+logger.addHandler(sh)
 # 给handler添加formatter
 fh_debug.setFormatter(formatter)
 fh_info.setFormatter(formatter)
-fh_warning.setFormatter(formatter)
-fh_error.setFormatter(formatter)
 
 # 给logger添加handler
 logger.addHandler(fh_debug)
 logger.addHandler(fh_info)
-logger.addHandler(fh_warning)
-logger.addHandler(fh_error)
 
 
 
@@ -289,7 +283,7 @@ if __name__ == '__main__':
 
     for i in randomList:
         # 生成1-1200的随机数(20分钟以内随机)，单位秒，可自行修改
-        randomNum = random.randint(1, 1200)
+        randomNum = random.randint(1, 10)
         logger.info(str(randomNum) + "秒后执行：" + Account[i]['Account'])
         time.sleep(randomNum)
         logger.info('正在填报第' + str(i+1) + '个账号')
